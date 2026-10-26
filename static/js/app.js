@@ -1,7 +1,6 @@
 /**
- * Building Fire Evacuation Route Planner - Advanced Frontend Engine
- * Includes Architectural CAD Canvas Visualizer, Particle Flow Animation,
- * Web Audio FX Synthesizer, Dynamic Building Integrity Meter, and Auto-Simulation.
+ * Building Fire Evacuation Route Planner - Unified Engine
+ * Works seamlessly on BOTH Local Python Flask Server AND GitHub Pages.
  */
 
 // Application State
@@ -18,7 +17,7 @@ const state = {
     zoomScale: 1.0,
     autoSimInterval: null,
     soundEnabled: true,
-    particles: [], // Animated particles moving along the safe egress route
+    particles: [],
 };
 
 // Canvas Setup
@@ -55,7 +54,7 @@ const toolHints = {
 };
 
 // -------------------------------------------------------------
-// Web Audio FX Synthesizer (Native Web Audio API)
+// Web Audio FX Synthesizer
 // -------------------------------------------------------------
 const AudioEngine = {
     ctx: null,
@@ -65,7 +64,7 @@ const AudioEngine = {
             this.ctx = new AudioCtx();
         }
     },
-    playTone(freq, type, duration, gainVal = 0.1) {
+    playTone(freq, type, duration, gainVal = 0.08) {
         if (!state.soundEnabled) return;
         try {
             this.init();
@@ -86,21 +85,17 @@ const AudioEngine = {
 
             osc.start();
             osc.stop(this.ctx.currentTime + duration);
-        } catch (e) {
-            // Audio policy fallback
-        }
+        } catch (e) {}
     },
-    click() {
-        this.playTone(600, 'sine', 0.08, 0.05);
-    },
+    click() { this.playTone(600, 'sine', 0.08, 0.05); },
     fireAlert() {
-        this.playTone(280, 'sawtooth', 0.25, 0.12);
-        setTimeout(() => this.playTone(220, 'sawtooth', 0.35, 0.15), 120);
+        this.playTone(280, 'sawtooth', 0.25, 0.1);
+        setTimeout(() => this.playTone(220, 'sawtooth', 0.35, 0.12), 120);
     },
     routeFound() {
-        this.playTone(523.25, 'triangle', 0.15, 0.08); // C5
-        setTimeout(() => this.playTone(659.25, 'triangle', 0.15, 0.08), 80); // E5
-        setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.1), 160); // G5
+        this.playTone(523.25, 'triangle', 0.15, 0.08);
+        setTimeout(() => this.playTone(659.25, 'triangle', 0.15, 0.08), 80);
+        setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.1), 160);
     },
     routeBlocked() {
         this.playTone(180, 'square', 0.3, 0.1);
@@ -109,12 +104,10 @@ const AudioEngine = {
 };
 
 // -------------------------------------------------------------
-// Standalone Client-Side Graph Engine (For GitHub Pages Deployment)
+// Client Graph & Algorithm Engine
 // -------------------------------------------------------------
 const ClientEngine = {
-    isStatic: window.location.protocol === 'file:' || window.location.hostname.includes('github.io'),
     currentPreset: 'school',
-    graph: null,
     stepCount: 0,
 
     createSchool() {
@@ -233,22 +226,21 @@ const ClientEngine = {
     initGraph(preset = 'school') {
         this.currentPreset = preset;
         this.stepCount = 0;
-        if (preset === 'school') this.graph = this.createSchool();
-        else if (preset === 'hospital') this.graph = this.createHospital();
-        else this.graph = this.createApartment();
-        return this.graph;
+        if (preset === 'school') return this.createSchool();
+        if (preset === 'hospital') return this.createHospital();
+        return this.createApartment();
     },
 
     getNeighbors(nodeId) {
         const neighbors = [];
-        this.graph.edges.forEach(edge => {
+        state.graph.edges.forEach(edge => {
             if (edge.is_blocked) return;
             let otherId = null;
             if (edge.from === nodeId) otherId = edge.to;
             else if (edge.to === nodeId) otherId = edge.from;
 
             if (otherId) {
-                const node = this.graph.nodes.find(n => n.id === otherId);
+                const node = state.graph.nodes.find(n => n.id === otherId);
                 if (node && node.is_passable) {
                     neighbors.push(otherId);
                 }
@@ -259,7 +251,7 @@ const ClientEngine = {
 
     bfs(startId) {
         const t0 = performance.now();
-        const startNode = this.graph.nodes.find(n => n.id === startId);
+        const startNode = state.graph.nodes.find(n => n.id === startId);
         if (!startNode || !startNode.is_passable) {
             return {
                 algorithm: "BFS",
@@ -267,6 +259,7 @@ const ClientEngine = {
                 path: [],
                 message: `Location '${startNode ? startNode.name : startId}' is blocked by fire!`,
                 explored_order: [],
+                nodes_visited_count: 0,
                 execution_time_us: 120
             };
         }
@@ -280,7 +273,7 @@ const ClientEngine = {
         while (queue.length > 0) {
             const currId = queue.shift();
             explored.push(currId);
-            const currNode = this.graph.nodes.find(n => n.id === currId);
+            const currNode = state.graph.nodes.find(n => n.id === currId);
 
             if (currNode && currNode.is_exit && currNode.is_passable) {
                 reachedExit = currId;
@@ -321,15 +314,15 @@ const ClientEngine = {
 
         let dist = 0;
         for (let i = 0; i < path.length - 1; i++) {
-            const edge = this.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
+            const edge = state.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
             dist += edge ? edge.distance : 10;
         }
 
-        const exitNode = this.graph.nodes.find(n => n.id === reachedExit);
+        const exitNode = state.graph.nodes.find(n => n.id === reachedExit);
         const directions = [];
         for (let i = 0; i < path.length - 1; i++) {
-            const u = this.graph.nodes.find(n => n.id === path[i]);
-            const v = this.graph.nodes.find(n => n.id === path[i+1]);
+            const u = state.graph.nodes.find(n => n.id === path[i]);
+            const v = state.graph.nodes.find(n => n.id === path[i+1]);
             if (i === 0) directions.push(`Step 1: Exit '${u.name}' into '${v.name}'.`);
             else if (i === path.length - 2) directions.push(`Step ${i+1}: Proceed into emergency exit: '${v.name}'.`);
             else directions.push(`Step ${i+1}: Continue along '${u.name}' towards '${v.name}'.`);
@@ -355,7 +348,7 @@ const ClientEngine = {
 
     dfs(startId) {
         const t0 = performance.now();
-        const startNode = this.graph.nodes.find(n => n.id === startId);
+        const startNode = state.graph.nodes.find(n => n.id === startId);
         if (!startNode || !startNode.is_passable) {
             return {
                 algorithm: "DFS",
@@ -363,6 +356,7 @@ const ClientEngine = {
                 path: [],
                 message: `Location '${startNode ? startNode.name : startId}' is blocked!`,
                 explored_order: [],
+                nodes_visited_count: 0,
                 execution_time_us: 150
             };
         }
@@ -376,7 +370,7 @@ const ClientEngine = {
             explored.push(currId);
             path.push(currId);
 
-            const currNode = this.graph.nodes.find(n => n.id === currId);
+            const currNode = state.graph.nodes.find(n => n.id === currId);
             if (currNode && currNode.is_exit && currNode.is_passable) {
                 return currId;
             }
@@ -409,10 +403,10 @@ const ClientEngine = {
 
         let dist = 0;
         for (let i = 0; i < path.length - 1; i++) {
-            const edge = this.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
+            const edge = state.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
             dist += edge ? edge.distance : 10;
         }
-        const exitNode = this.graph.nodes.find(n => n.id === reachedExit);
+        const exitNode = state.graph.nodes.find(n => n.id === reachedExit);
 
         return {
             algorithm: "DFS",
@@ -433,18 +427,18 @@ const ClientEngine = {
 
     stepFire() {
         this.stepCount++;
-        const fireNodes = this.graph.nodes.filter(n => n.state === 'FIRE').map(n => n.id);
+        const fireNodes = state.graph.nodes.filter(n => n.state === 'FIRE').map(n => n.id);
         const newFires = [];
         const newSmokes = [];
 
         fireNodes.forEach(fId => {
-            this.graph.edges.forEach(edge => {
+            state.graph.edges.forEach(edge => {
                 let neighborId = null;
                 if (edge.from === fId) neighborId = edge.to;
                 else if (edge.to === fId) neighborId = edge.from;
 
                 if (neighborId) {
-                    const node = this.graph.nodes.find(n => n.id === neighborId);
+                    const node = state.graph.nodes.find(n => n.id === neighborId);
                     if (node && node.state === 'SAFE') {
                         node.state = 'SMOKE';
                         node.smoke_level = 0.7;
@@ -463,14 +457,14 @@ const ClientEngine = {
             step: this.stepCount,
             new_fires: newFires,
             new_smokes: newSmokes,
-            total_fires: this.graph.nodes.filter(n => n.state === 'FIRE').length,
-            intact_exits: this.graph.nodes.filter(n => n.type === 'EXIT' && n.is_passable).length
+            total_fires: state.graph.nodes.filter(n => n.state === 'FIRE').length,
+            intact_exits: state.graph.nodes.filter(n => n.type === 'EXIT' && n.is_passable).length
         };
     }
 };
 
 // -------------------------------------------------------------
-// API Services & State Handlers
+// UI Services & Event Handlers
 // -------------------------------------------------------------
 function populateRoomSelector() {
     if (!state.graph || !startRoomSelector) return;
@@ -489,487 +483,127 @@ function populateRoomSelector() {
     });
 }
 
-async function fetchBuilding() {
-    if (ClientEngine.isStatic) {
-        state.graph = ClientEngine.initGraph('school');
-        populateRoomSelector();
-        updateStats();
-        draw();
-        runBFS();
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/building");
-        if (!res.ok) throw new Error("API not available");
-        const data = await res.json();
-        state.graph = data.graph;
-        populateRoomSelector();
-        updateStats();
-        draw();
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        state.graph = ClientEngine.initGraph('school');
-        populateRoomSelector();
-        updateStats();
-        draw();
-        runBFS();
-    }
+function initApp() {
+    state.graph = ClientEngine.initGraph('school');
+    state.startNodeId = "R101";
+    populateRoomSelector();
+    updateStats();
+    draw();
+    runBFS();
 }
 
-async function switchPreset(preset) {
+function switchPreset(preset) {
     stopAutoSimulation();
-
     if (preset === "school") state.startNodeId = "R101";
     else if (preset === "hospital") state.startNodeId = "ICU";
     else if (preset === "apartment") state.startNodeId = "FLAT_401";
 
-    if (ClientEngine.isStatic) {
-        state.graph = ClientEngine.initGraph(preset);
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-        populateRoomSelector();
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-        traversalLog.textContent = `Loaded ${state.graph.building_name}`;
-        logStepCount.textContent = "Preset Loaded";
-        AudioEngine.click();
-        updateStats();
-        draw();
-        runBFS();
-        return;
-    }
+    state.graph = ClientEngine.initGraph(preset);
+    state.currentRoute = [];
+    state.traversalOrder = [];
+    state.lastResult = null;
+    state.particles = [];
 
-    try {
-        const res = await fetch("/api/building/select", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ preset }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-        populateRoomSelector();
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    populateRoomSelector();
+    if (benchmarkCard) benchmarkCard.style.display = "none";
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
-        traversalLog.textContent = `Loaded ${state.graph.building_name}`;
-        logStepCount.textContent = "Preset Loaded";
-        AudioEngine.click();
-        updateStats();
-        draw();
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        switchPreset(preset);
-    }
+    traversalLog.textContent = `Loaded ${state.graph.building_name}`;
+    logStepCount.textContent = "Preset Loaded";
+    AudioEngine.click();
+    updateStats();
+    draw();
+    runBFS();
 }
 
-async function toggleNodeFire(nodeId) {
-    if (ClientEngine.isStatic) {
-        const node = state.graph.nodes.find(n => n.id === nodeId);
-        if (node) {
-            if (node.state === "FIRE") {
-                node.state = "SAFE";
-                node.smoke_level = 0;
-                node.is_passable = true;
-            } else {
-                node.state = "FIRE";
-                node.smoke_level = 1.0;
-                node.is_passable = false;
-            }
+function toggleNodeFire(nodeId) {
+    const node = state.graph.nodes.find(n => n.id === nodeId);
+    if (node) {
+        if (node.state === "FIRE") {
+            node.state = "SAFE";
+            node.smoke_level = 0;
+            node.is_passable = true;
+        } else {
+            node.state = "FIRE";
+            node.smoke_level = 1.0;
+            node.is_passable = false;
         }
-        AudioEngine.fireAlert();
-        updateStats();
-        runBFS();
-        return;
     }
-
-    try {
-        const res = await fetch("/api/node/toggle-fire", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: nodeId }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.fireAlert();
-        updateStats();
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        toggleNodeFire(nodeId);
-    }
+    AudioEngine.fireAlert();
+    updateStats();
+    runBFS();
 }
 
-async function toggleNodeBlock(nodeId) {
-    if (ClientEngine.isStatic) {
-        const node = state.graph.nodes.find(n => n.id === nodeId);
-        if (node) {
-            if (node.state === "BLOCKED") {
-                node.state = "SAFE";
-                node.is_passable = true;
-            } else {
-                node.state = "BLOCKED";
-                node.is_passable = false;
-            }
+function toggleNodeBlock(nodeId) {
+    const node = state.graph.nodes.find(n => n.id === nodeId);
+    if (node) {
+        if (node.state === "BLOCKED") {
+            node.state = "SAFE";
+            node.is_passable = true;
+        } else {
+            node.state = "BLOCKED";
+            node.is_passable = false;
         }
-        AudioEngine.click();
-        updateStats();
-        runBFS();
-        return;
     }
-
-    try {
-        const res = await fetch("/api/node/toggle-block", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: nodeId }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.click();
-        updateStats();
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        toggleNodeBlock(nodeId);
-    }
+    AudioEngine.click();
+    updateStats();
+    runBFS();
 }
 
-async function stepFireSimulation() {
-    if (ClientEngine.isStatic) {
-        const summary = ClientEngine.stepFire();
-        AudioEngine.fireAlert();
-        updateStats();
-        traversalLog.textContent = `Fire Step #${summary.step}: +${summary.new_fires.length} fires, +${summary.new_smokes.length} smokes. Total fires: ${summary.total_fires}. Intact exits: ${summary.intact_exits}.`;
-        logStepCount.textContent = `Step #${summary.step}`;
-        runBFS();
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/simulation/step", { method: "POST" });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.fireAlert();
-        updateStats();
-        const s = data.summary;
-        traversalLog.textContent = `Fire Step #${s.step}: +${s.new_fires.length} fires, +${s.new_smokes.length} smokes. Total fires: ${s.total_fires}. Intact exits: ${s.intact_exits}.`;
-        logStepCount.textContent = `Step #${s.step}`;
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        stepFireSimulation();
-    }
+function stepFireSimulation() {
+    const summary = ClientEngine.stepFire();
+    AudioEngine.fireAlert();
+    updateStats();
+    traversalLog.textContent = `Fire Step #${summary.step}: +${summary.new_fires.length} fires, +${summary.new_smokes.length} smokes. Total fires: ${summary.total_fires}. Safe exits: ${summary.intact_exits}.`;
+    logStepCount.textContent = `Step #${summary.step}`;
+    runBFS();
 }
 
-async function resetSimulation() {
+function resetSimulation() {
     stopAutoSimulation();
+    const preset = presetSelector ? presetSelector.value : "school";
+    state.graph = ClientEngine.initGraph(preset);
+    state.currentRoute = [];
+    state.traversalOrder = [];
+    state.lastResult = null;
+    state.particles = [];
+    updateStats();
+    populateRoomSelector();
 
-    if (ClientEngine.isStatic) {
-        ClientEngine.initGraph(ClientEngine.currentPreset);
-        state.graph = ClientEngine.graph;
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-        updateStats();
-        populateRoomSelector();
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-        traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
-        logStepCount.textContent = "Safe Baseline";
-        AudioEngine.click();
-        draw();
-        runBFS();
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/simulation/reset", { method: "POST" });
-        const data = await res.json();
-        state.graph = data.graph;
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-        updateStats();
-        populateRoomSelector();
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-        traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
-        logStepCount.textContent = "Safe Baseline";
-        AudioEngine.click();
-        draw();
-        runBFS();
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        resetSimulation();
-    }
+    if (benchmarkCard) benchmarkCard.style.display = "none";
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
+    logStepCount.textContent = "Safe Baseline";
+    AudioEngine.click();
+    draw();
+    runBFS();
 }
 
-async function runBFS() {
-    if (!state.startNodeId) return;
-
-    if (ClientEngine.isStatic) {
-        const result = ClientEngine.bfs(state.startNodeId);
-        displayRouteResult(result, "Breadth-First Search (BFS)");
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/plan/bfs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const result = await res.json();
-        displayRouteResult(result, "Breadth-First Search (BFS)");
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        runBFS();
-    }
+function runBFS() {
+    if (!state.startNodeId || !state.graph) return;
+    const result = ClientEngine.bfs(state.startNodeId);
+    displayRouteResult(result, "Breadth-First Search (BFS)");
 }
 
-async function runDFS() {
-    if (!state.startNodeId) return;
-
-    if (ClientEngine.isStatic) {
-        const result = ClientEngine.dfs(state.startNodeId);
-        displayRouteResult(result, "Depth-First Search (DFS)");
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/plan/dfs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const result = await res.json();
-        displayRouteResult(result, "Depth-First Search (DFS)");
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        runDFS();
-    }
+function runDFS() {
+    if (!state.startNodeId || !state.graph) return;
+    const result = ClientEngine.dfs(state.startNodeId);
+    displayRouteResult(result, "Depth-First Search (DFS)");
 }
 
-async function runBenchmarkComparison() {
-    if (!state.startNodeId) return;
+function runBenchmarkComparison() {
+    if (!state.startNodeId || !state.graph) return;
+    const bfs = ClientEngine.bfs(state.startNodeId);
+    const dfs = ClientEngine.dfs(state.startNodeId);
+    const node = state.graph.nodes.find(n => n.id === state.startNodeId);
 
-    if (ClientEngine.isStatic) {
-        const bfs = ClientEngine.bfs(state.startNodeId);
-        const dfs = ClientEngine.dfs(state.startNodeId);
-        const node = state.graph.nodes.find(n => n.id === state.startNodeId);
-        AudioEngine.click();
-        renderBenchmarkTable({
-            start_node_id: state.startNodeId,
-            start_room_name: node ? node.name : state.startNodeId,
-            bfs: bfs,
-            dfs: dfs,
-        });
-        return;
-    }
-
-    try {
-        const res = await fetch("/api/plan/compare", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const data = await res.json();
-        AudioEngine.click();
-        renderBenchmarkTable(data);
-    } catch (err) {
-        ClientEngine.isStatic = true;
-        runBenchmarkComparison();
-    }
-}
-
-async function switchPreset(preset) {
-    try {
-        stopAutoSimulation();
-        const res = await fetch("/api/building/select", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ preset }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-
-        if (preset === "school") state.startNodeId = "R101";
-        else if (preset === "hospital") state.startNodeId = "ICU";
-        else if (preset === "apartment") state.startNodeId = "FLAT_401";
-
-        populateRoomSelector();
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-        traversalLog.textContent = `Loaded ${state.graph.building_name}`;
-        logStepCount.textContent = "Preset Loaded";
-        AudioEngine.click();
-        updateStats();
-        draw();
-        // DIRECT AUTO-ALLOCATION ON PRESET CHANGE
-        runBFS();
-    } catch (err) {
-        console.error("Error selecting preset:", err);
-    }
-}
-
-async function toggleNodeFire(nodeId) {
-    try {
-        const res = await fetch("/api/node/toggle-fire", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: nodeId }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.fireAlert();
-        updateStats();
-        if (state.currentRoute.length > 0) {
-            runBFS();
-        } else {
-            draw();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function toggleNodeBlock(nodeId) {
-    try {
-        const res = await fetch("/api/node/toggle-block", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: nodeId }),
-        });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.click();
-        updateStats();
-        if (state.currentRoute.length > 0) {
-            runBFS();
-        } else {
-            draw();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function stepFireSimulation() {
-    try {
-        const res = await fetch("/api/simulation/step", { method: "POST" });
-        const data = await res.json();
-        state.graph = data.graph;
-        AudioEngine.fireAlert();
-        updateStats();
-        const s = data.summary;
-        traversalLog.textContent = `Fire Step #${s.step}: +${s.new_fires.length} fires, +${s.new_smokes.length} smokes. Total fires: ${s.total_fires}. Intact exits: ${s.intact_exits}.`;
-        logStepCount.textContent = `Step #${s.step}`;
-        if (state.currentRoute.length > 0) {
-            runBFS();
-        } else {
-            draw();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function resetSimulation() {
-    try {
-        stopAutoSimulation();
-        const res = await fetch("/api/simulation/reset", { method: "POST" });
-        const data = await res.json();
-        state.graph = data.graph;
-        state.currentRoute = [];
-        state.traversalOrder = [];
-        state.lastResult = null;
-        state.particles = [];
-        updateStats();
-
-        routeOutput.innerHTML = `<div class="empty-state">All hazards cleared. Floor plan restored.</div>`;
-        if (directionsPanel) directionsPanel.style.display = "none";
-        if (btnVoice) btnVoice.style.display = "none";
-        if (btnStopVoice) btnStopVoice.style.display = "none";
-        if (benchmarkCard) benchmarkCard.style.display = "none";
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-        traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
-        logStepCount.textContent = "Safe Baseline";
-        AudioEngine.click();
-        draw();
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function runBFS() {
-    if (!state.startNodeId) {
-        alert("Please select a starting room first!");
-        return;
-    }
-    try {
-        const res = await fetch("/api/plan/bfs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const result = await res.json();
-        displayRouteResult(result, "Breadth-First Search (BFS)");
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function runDFS() {
-    if (!state.startNodeId) {
-        alert("Please select a starting room first!");
-        return;
-    }
-    try {
-        const res = await fetch("/api/plan/dfs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const result = await res.json();
-        displayRouteResult(result, "Depth-First Search (DFS)");
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function runBenchmarkComparison() {
-    if (!state.startNodeId) {
-        alert("Please select a starting room first!");
-        return;
-    }
-    try {
-        const res = await fetch("/api/plan/compare", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start_node_id: state.startNodeId }),
-        });
-        const data = await res.json();
-        AudioEngine.click();
-        renderBenchmarkTable(data);
-    } catch (err) {
-        console.error(err);
-    }
+    AudioEngine.click();
+    renderBenchmarkTable({
+        start_node_id: state.startNodeId,
+        start_room_name: node ? node.name : state.startNodeId,
+        bfs: bfs,
+        dfs: dfs,
+    });
 }
 
 // -------------------------------------------------------------
@@ -984,7 +618,6 @@ function toggleAutoSimulation() {
 }
 
 function startAutoSimulation() {
-    // If no fires yet, ignite a random room to get the fire moving
     const activeFires = state.graph.nodes.filter(n => n.state === "FIRE");
     if (activeFires.length === 0) {
         const nonExits = state.graph.nodes.filter(n => n.type !== "EXIT" && n.id !== state.startNodeId);
@@ -1026,7 +659,6 @@ function updateStats() {
     statSmokes.textContent = smokes;
     statExits.textContent = exits;
 
-    // Calculate Building Safety Integrity Score
     const hazardScore = (fires * 2.5) + (smokes * 1.0) + (blocked * 1.5);
     const integrity = Math.max(0, Math.min(100, Math.round(100 - (hazardScore / (totalNodes * 1.5)) * 100)));
 
@@ -1192,7 +824,7 @@ function stopEvacuationAlert() {
 }
 
 // -------------------------------------------------------------
-// Particle Animation System for Egress Route
+// Particle Animation System
 // -------------------------------------------------------------
 function initRouteParticles() {
     state.particles = [];
@@ -1200,7 +832,7 @@ function initRouteParticles() {
 
     for (let i = 0; i < 18; i++) {
         state.particles.push({
-            progress: i / 18, // 0 to 1 along the path
+            progress: i / 18,
             speed: 0.006 + Math.random() * 0.004,
             size: 3 + Math.random() * 2,
         });
@@ -1225,16 +857,16 @@ function getPointOnRoute(progress, nodeMap) {
 }
 
 // -------------------------------------------------------------
-// Architectural CAD Canvas Visualizer
+// Canvas Visualizer
 // -------------------------------------------------------------
 function getNodeColor(node) {
-    if (node.id === state.startNodeId) return "#8b5cf6"; // Purple Start
-    if (node.state === "FIRE") return "#ef4444";        // Red Fire
-    if (node.state === "SMOKE") return "#f59e0b";       // Amber Smoke
-    if (node.state === "BLOCKED") return "#475569";     // Slate Blocked
-    if (node.type === "EXIT") return "#10b981";         // Green Exit
-    if (node.category === "Hazard" || node.risk_level) return "#ec4899"; // Pink Hazard Lab
-    return "#38bdf8";                                   // Cyan Safe Room
+    if (node.id === state.startNodeId) return "#8b5cf6";
+    if (node.state === "FIRE") return "#ef4444";
+    if (node.state === "SMOKE") return "#f59e0b";
+    if (node.state === "BLOCKED") return "#475569";
+    if (node.type === "EXIT") return "#10b981";
+    if (node.category === "Hazard" || node.risk_level) return "#ec4899";
+    return "#38bdf8";
 }
 
 function draw() {
@@ -1243,14 +875,13 @@ function draw() {
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Zoom & Center Scale
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.scale(state.zoomScale, state.zoomScale);
     ctx.translate(-canvas.width / 2 + 50, -canvas.height / 2 + 25);
 
     const timeSec = Date.now() / 1000;
 
-    // 1. Draw Architectural Grid & CAD Crosshairs
+    // 1. Grid
     ctx.strokeStyle = "#131e33";
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width + 100; x += 40) {
@@ -1269,13 +900,12 @@ function draw() {
     const nodeMap = {};
     state.graph.nodes.forEach(n => { nodeMap[n.id] = n; });
 
-    // 2. Draw Architectural Corridors (Double-lined walls with corridor floor)
+    // 2. Corridors
     state.graph.edges.forEach(edge => {
         const u = nodeMap[edge.from];
         const v = nodeMap[edge.to];
         if (!u || !v) return;
 
-        // Base Hallway Floor
         ctx.beginPath();
         ctx.moveTo(u.x, u.y);
         ctx.lineTo(v.x, v.y);
@@ -1287,19 +917,17 @@ function draw() {
             ctx.stroke();
             ctx.setLineDash([]);
         } else {
-            // Thick Hallway casing
             ctx.strokeStyle = "#1c2a46";
             ctx.lineWidth = 14;
             ctx.stroke();
 
-            // Inner walking aisle
             ctx.strokeStyle = "#0e182a";
             ctx.lineWidth = 8;
             ctx.stroke();
         }
     });
 
-    // 3. Highlight Computed Evacuation Route with Glowing Wave
+    // 3. Egress Path & Particles
     if (state.currentRoute && state.currentRoute.length > 1) {
         ctx.save();
         ctx.strokeStyle = "#22c55e";
@@ -1320,7 +948,6 @@ function draw() {
         ctx.stroke();
         ctx.restore();
 
-        // Draw Animated Egress Particles Flowing Along Path
         state.particles.forEach(p => {
             p.progress = (p.progress + p.speed) % 1.0;
             const pt = getPointOnRoute(p.progress, nodeMap);
@@ -1337,18 +964,16 @@ function draw() {
         });
     }
 
-    // 4. Draw Floor Plan Nodes (Rooms, Corridors, Exits)
+    // 4. Nodes
     state.graph.nodes.forEach(node => {
         const isStart = node.id === state.startNodeId;
         const radius = node.type === "CORRIDOR" ? 15 : 23;
 
-        // Dynamic Glow / Flame Pulse
         if (node.state === "FIRE") {
             const flamePulse = 14 + Math.sin(timeSec * 8 + node.x) * 6;
             ctx.shadowColor = "#ef4444";
             ctx.shadowBlur = flamePulse;
 
-            // Outer heat dispersion wave
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 8 + Math.sin(timeSec * 4) * 4, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(239, 68, 68, 0.25)";
@@ -1357,7 +982,6 @@ function draw() {
         } else if (node.state === "SMOKE") {
             ctx.shadowColor = "#f59e0b";
             ctx.shadowBlur = 12;
-            // Smoke cloud ring
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 5, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(245, 158, 11, 0.3)";
@@ -1368,7 +992,6 @@ function draw() {
             ctx.shadowColor = "#10b981";
             ctx.shadowBlur = exitPulse;
 
-            // Beacon rings around exits
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 6, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(16, 185, 129, 0.4)";
@@ -1377,7 +1000,6 @@ function draw() {
         } else if (isStart) {
             ctx.shadowColor = "#8b5cf6";
             ctx.shadowBlur = 16;
-            // Animated beacon ring on start
             ctx.beginPath();
             ctx.arc(node.x, node.y, radius + 7 + Math.sin(timeSec * 5) * 3, 0, Math.PI * 2);
             ctx.strokeStyle = "#c084fc";
@@ -1387,7 +1009,6 @@ function draw() {
             ctx.shadowBlur = 0;
         }
 
-        // Base circle / Hub
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = getNodeColor(node);
@@ -1396,9 +1017,8 @@ function draw() {
         ctx.lineWidth = isStart ? 3 : 2;
         ctx.strokeStyle = isStart ? "#ffffff" : "#0d1527";
         ctx.stroke();
-        ctx.shadowBlur = 0; // Reset blur
+        ctx.shadowBlur = 0;
 
-        // Interior Label / Icon
         ctx.fillStyle = "#ffffff";
         ctx.font = node.type === "CORRIDOR" ? "bold 10px Plus Jakarta Sans" : "bold 11px Plus Jakarta Sans";
         ctx.textAlign = "center";
@@ -1413,20 +1033,18 @@ function draw() {
 
         ctx.fillText(label, node.x, node.y);
 
-        // Room Name Caption
         ctx.fillStyle = "#cbd5e1";
         ctx.font = "600 10px Plus Jakarta Sans";
         ctx.fillText(node.name, node.x, node.y + radius + 13);
     });
 
-    // 5. Draw Glassmorphism Hover Tooltip
+    // 5. Tooltip
     if (state.hoveredNode) {
         const n = state.hoveredNode;
         const text = `${n.name} • ${n.state} ${n.smoke_level > 0 ? `(${Math.round(n.smoke_level*100)}% Smoke)` : ""}`;
         ctx.font = "600 11px Plus Jakarta Sans";
         const metrics = ctx.measureText(text);
         const padX = 10;
-        const padY = 5;
         const bx = Math.min(n.x - 20, canvas.width - metrics.width - 40);
         const by = n.y - 42;
 
@@ -1453,17 +1071,14 @@ function animate() {
 }
 
 // -------------------------------------------------------------
-// Interactive Coordinate Mapping & Canvas Events
+// Interactive Events & Tool Controls
 // -------------------------------------------------------------
 function getCanvasCoords(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     const rawX = clientX - rect.left;
     const rawY = clientY - rect.top;
-
-    // Transform raw client coordinates back through canvas translation & zoom scale
     const worldX = (rawX - canvas.width / 2) / state.zoomScale + canvas.width / 2 - 50;
     const worldY = (rawY - canvas.height / 2) / state.zoomScale + canvas.height / 2 - 25;
-
     return { x: worldX, y: worldY };
 }
 
@@ -1478,7 +1093,6 @@ function findNodeAt(x, y) {
 canvas.addEventListener("click", e => {
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const clickedNode = findNodeAt(coords.x, coords.y);
-
     if (!clickedNode) return;
 
     if (state.activeTool === "start") {
@@ -1487,7 +1101,6 @@ canvas.addEventListener("click", e => {
         traversalLog.textContent = `Selected evacuation location: ${clickedNode.name} (${clickedNode.id})`;
         logStepCount.textContent = "Route Allocated";
         AudioEngine.click();
-        // DIRECT INSTANT ALLOCATION: Automatically compute optimal evacuation route immediately!
         runBFS();
     } else if (state.activeTool === "fire") {
         toggleNodeFire(clickedNode.id);
@@ -1499,7 +1112,6 @@ canvas.addEventListener("click", e => {
 canvas.addEventListener("mousemove", e => {
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const node = findNodeAt(coords.x, coords.y);
-
     if (node !== state.hoveredNode) {
         state.hoveredNode = node;
         draw();
@@ -1513,9 +1125,7 @@ canvas.addEventListener("mouseleave", () => {
     }
 });
 
-// -------------------------------------------------------------
-// Toolbar, Zoom & Audio Controls
-// -------------------------------------------------------------
+// Tool Selection
 document.querySelectorAll(".tool-btn").forEach(btn => {
     btn.addEventListener("click", () => {
         document.querySelectorAll(".tool-btn").forEach(b => b.classList.remove("active"));
@@ -1536,7 +1146,6 @@ if (startRoomSelector) {
         AudioEngine.click();
         traversalLog.textContent = `Location changed to: ${e.target.options[e.target.selectedIndex].text}`;
         logStepCount.textContent = "Route Allocated";
-        // DIRECT INSTANT ALLOCATION from dropdown!
         runBFS();
     });
 }
@@ -1577,6 +1186,5 @@ document.getElementById("btn-close-benchmark").addEventListener("click", () => {
 });
 
 // Start app
-fetchBuilding().then(() => {
-    animate();
-});
+initApp();
+animate();
