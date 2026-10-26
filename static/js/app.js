@@ -109,6 +109,367 @@ const AudioEngine = {
 };
 
 // -------------------------------------------------------------
+// Standalone Client-Side Graph Engine (For GitHub Pages Deployment)
+// -------------------------------------------------------------
+const ClientEngine = {
+    isStatic: window.location.protocol === 'file:' || window.location.hostname.includes('github.io'),
+    currentPreset: 'school',
+    graph: null,
+    stepCount: 0,
+
+    createSchool() {
+        return {
+            building_name: "High School Academic Block",
+            nodes: [
+                { id: "R101", name: "Classroom 101", type: "ROOM", x: 100, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "R102", name: "Classroom 102", type: "ROOM", x: 250, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "R103", name: "Classroom 103", type: "ROOM", x: 400, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "LAB", name: "Chemistry Lab (Hazard)", type: "ROOM", x: 550, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "Chemicals", category: "Hazard" },
+                { id: "LIB", name: "Library", type: "ROOM", x: 100, y: 340, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "STAFF", name: "Staff Room", type: "ROOM", x: 250, y: 340, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "R104", name: "Classroom 104", type: "ROOM", x: 400, y: 340, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "SRV", name: "Server / Electrical (Hazard)", type: "ROOM", x: 550, y: 340, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "Electrical", category: "Hazard" },
+                { id: "C1", name: "West Hallway", type: "CORRIDOR", x: 100, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "C2", name: "Mid-West Intersection", type: "CORRIDOR", x: 250, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "C3", name: "Mid-East Intersection", type: "CORRIDOR", x: 400, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "C4", name: "East Hallway", type: "CORRIDOR", x: 550, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "EXIT_WEST", name: "West Main Gate (Exit A)", type: "EXIT", x: 20, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_EAST", name: "East Field Gate (Exit B)", type: "EXIT", x: 640, y: 220, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_NORTH", name: "North Staircase Exit (Exit C)", type: "EXIT", x: 250, y: 20, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true }
+            ],
+            edges: [
+                { from: "R101", to: "C1", distance: 10, is_blocked: false },
+                { from: "R102", to: "C2", distance: 10, is_blocked: false },
+                { from: "R103", to: "C3", distance: 10, is_blocked: false },
+                { from: "LAB", to: "C4", distance: 10, is_blocked: false },
+                { from: "LIB", to: "C1", distance: 10, is_blocked: false },
+                { from: "STAFF", to: "C2", distance: 10, is_blocked: false },
+                { from: "R104", to: "C3", distance: 10, is_blocked: false },
+                { from: "SRV", to: "C4", distance: 10, is_blocked: false },
+                { from: "C1", to: "C2", distance: 15, is_blocked: false },
+                { from: "C2", to: "C3", distance: 15, is_blocked: false },
+                { from: "C3", to: "C4", distance: 15, is_blocked: false },
+                { from: "C1", to: "EXIT_WEST", distance: 8, is_blocked: false },
+                { from: "C4", to: "EXIT_EAST", distance: 8, is_blocked: false },
+                { from: "R102", to: "EXIT_NORTH", distance: 8, is_blocked: false }
+            ]
+        };
+    },
+
+    createHospital() {
+        return {
+            building_name: "City Hospital Emergency & Inpatient Wing",
+            nodes: [
+                { id: "ICU", name: "ICU Ward", type: "ROOM", x: 120, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "SURG", name: "Surgery / OT", type: "ROOM", x: 300, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "O2_BAY", name: "Oxygen Cylinder Bay (Hazard)", type: "ROOM", x: 480, y: 100, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "Gas", category: "Hazard" },
+                { id: "GEN_W1", name: "General Ward A", type: "ROOM", x: 120, y: 320, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "GEN_W2", name: "General Ward B", type: "ROOM", x: 300, y: 320, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "PHARM", name: "Pharmacy & Chemical Store", type: "ROOM", x: 480, y: 320, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "Chemicals", category: "Hazard" },
+                { id: "H1", name: "West Corridor", type: "CORRIDOR", x: 120, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "H2", name: "Central Nurses Station", type: "CORRIDOR", x: 300, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "H3", name: "East Corridor", type: "CORRIDOR", x: 480, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "EXIT_AMBULANCE", name: "Ambulance Bay Exit", type: "EXIT", x: 30, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_HELIPAD", name: "Roof Stair/Helipad Exit", type: "EXIT", x: 300, y: 30, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_SOUTH", name: "South Parking Exit", type: "EXIT", x: 300, y: 410, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_FIRE_EAST", name: "East Fire Escape Ramp", type: "EXIT", x: 570, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true }
+            ],
+            edges: [
+                { from: "ICU", to: "H1", distance: 9, is_blocked: false },
+                { from: "GEN_W1", to: "H1", distance: 9, is_blocked: false },
+                { from: "SURG", to: "H2", distance: 9, is_blocked: false },
+                { from: "GEN_W2", to: "H2", distance: 9, is_blocked: false },
+                { from: "O2_BAY", to: "H3", distance: 9, is_blocked: false },
+                { from: "PHARM", to: "H3", distance: 9, is_blocked: false },
+                { from: "H1", to: "H2", distance: 18, is_blocked: false },
+                { from: "H2", to: "H3", distance: 18, is_blocked: false },
+                { from: "H1", to: "EXIT_AMBULANCE", distance: 8, is_blocked: false },
+                { from: "H2", to: "EXIT_HELIPAD", distance: 12, is_blocked: false },
+                { from: "H2", to: "EXIT_SOUTH", distance: 12, is_blocked: false },
+                { from: "H3", to: "EXIT_FIRE_EAST", distance: 8, is_blocked: false }
+            ]
+        };
+    },
+
+    createApartment() {
+        return {
+            building_name: "Skyline Heights Residential Apartments (Floor 4)",
+            nodes: [
+                { id: "FLAT_401", name: "Flat 401 (3BHK)", type: "ROOM", x: 110, y: 90, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "FLAT_402", name: "Flat 402 (2BHK)", type: "ROOM", x: 250, y: 90, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "GAS_DUCT", name: "LPG Pipeline & Gas Duct (Hazard)", type: "ROOM", x: 390, y: 90, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "LPG", category: "Hazard" },
+                { id: "FLAT_403", name: "Flat 403 (3BHK)", type: "ROOM", x: 530, y: 90, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "FLAT_404", name: "Flat 404 (2BHK)", type: "ROOM", x: 110, y: 330, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "FLAT_405", name: "Flat 405 (Studio)", type: "ROOM", x: 250, y: 330, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "ELEC_SHAFT", name: "Main Electrical Shaft (Hazard)", type: "ROOM", x: 390, y: 330, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false, risk_level: "High Voltage", category: "Hazard" },
+                { id: "FLAT_406", name: "Flat 406 (3BHK)", type: "ROOM", x: 530, y: 330, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "CORR_W", name: "West Resident Corridor", type: "CORRIDOR", x: 110, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "LOBBY_W", name: "Elevator Landing West", type: "CORRIDOR", x: 250, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "LOBBY_E", name: "Central Atrium Lobby", type: "CORRIDOR", x: 390, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "CORR_E", name: "East Resident Corridor", type: "CORRIDOR", x: 530, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: false },
+                { id: "EXIT_FIRE_STAIR_W", name: "West Fire Escape Stairwell", type: "EXIT", x: 20, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_MAIN_STAIRS", name: "Central Main Stairwell Egress", type: "EXIT", x: 390, y: 410, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true },
+                { id: "EXIT_FIRE_STAIR_E", name: "East Emergency Stairwell", type: "EXIT", x: 630, y: 210, state: "SAFE", smoke_level: 0, is_passable: true, is_exit: true }
+            ],
+            edges: [
+                { from: "FLAT_401", to: "CORR_W", distance: 8, is_blocked: false },
+                { from: "FLAT_404", to: "CORR_W", distance: 8, is_blocked: false },
+                { from: "FLAT_402", to: "LOBBY_W", distance: 8, is_blocked: false },
+                { from: "FLAT_405", to: "LOBBY_W", distance: 8, is_blocked: false },
+                { from: "GAS_DUCT", to: "LOBBY_E", distance: 8, is_blocked: false },
+                { from: "ELEC_SHAFT", to: "LOBBY_E", distance: 8, is_blocked: false },
+                { from: "FLAT_403", to: "CORR_E", distance: 8, is_blocked: false },
+                { from: "FLAT_406", to: "CORR_E", distance: 8, is_blocked: false },
+                { from: "CORR_W", to: "LOBBY_W", distance: 14, is_blocked: false },
+                { from: "LOBBY_W", to: "LOBBY_E", distance: 14, is_blocked: false },
+                { from: "LOBBY_E", to: "CORR_E", distance: 14, is_blocked: false },
+                { from: "CORR_W", to: "EXIT_FIRE_STAIR_W", distance: 9, is_blocked: false },
+                { from: "LOBBY_E", to: "EXIT_MAIN_STAIRS", distance: 12, is_blocked: false },
+                { from: "CORR_E", to: "EXIT_FIRE_STAIR_E", distance: 9, is_blocked: false }
+            ]
+        };
+    },
+
+    initGraph(preset = 'school') {
+        this.currentPreset = preset;
+        this.stepCount = 0;
+        if (preset === 'school') this.graph = this.createSchool();
+        else if (preset === 'hospital') this.graph = this.createHospital();
+        else this.graph = this.createApartment();
+        return this.graph;
+    },
+
+    getNeighbors(nodeId) {
+        const neighbors = [];
+        this.graph.edges.forEach(edge => {
+            if (edge.is_blocked) return;
+            let otherId = null;
+            if (edge.from === nodeId) otherId = edge.to;
+            else if (edge.to === nodeId) otherId = edge.from;
+
+            if (otherId) {
+                const node = this.graph.nodes.find(n => n.id === otherId);
+                if (node && node.is_passable) {
+                    neighbors.push(otherId);
+                }
+            }
+        });
+        return neighbors;
+    },
+
+    bfs(startId) {
+        const t0 = performance.now();
+        const startNode = this.graph.nodes.find(n => n.id === startId);
+        if (!startNode || !startNode.is_passable) {
+            return {
+                algorithm: "BFS",
+                success: false,
+                path: [],
+                message: `Location '${startNode ? startNode.name : startId}' is blocked by fire!`,
+                explored_order: [],
+                execution_time_us: 120
+            };
+        }
+
+        const queue = [startId];
+        const visited = new Set([startId]);
+        const parent = { [startId]: null };
+        const explored = [];
+        let reachedExit = null;
+
+        while (queue.length > 0) {
+            const currId = queue.shift();
+            explored.push(currId);
+            const currNode = this.graph.nodes.find(n => n.id === currId);
+
+            if (currNode && currNode.is_exit && currNode.is_passable) {
+                reachedExit = currId;
+                break;
+            }
+
+            for (const nbr of this.getNeighbors(currId)) {
+                if (!visited.has(nbr)) {
+                    visited.add(nbr);
+                    parent[nbr] = currId;
+                    queue.push(nbr);
+                }
+            }
+        }
+
+        const elapsedUs = Math.round((performance.now() - t0) * 1000);
+
+        if (!reachedExit) {
+            return {
+                algorithm: "BFS",
+                success: false,
+                path: [],
+                message: "NO SAFE EVACUATION ROUTE FOUND! All paths to exits are blocked by hazards.",
+                explored_order: explored,
+                nodes_visited_count: explored.length,
+                execution_time_us: elapsedUs,
+                turn_directions: ["CRITICAL: Shelter in place or await rescue. All corridors blocked."]
+            };
+        }
+
+        const path = [];
+        let curr = reachedExit;
+        while (curr) {
+            path.push(curr);
+            curr = parent[curr];
+        }
+        path.reverse();
+
+        let dist = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+            const edge = this.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
+            dist += edge ? edge.distance : 10;
+        }
+
+        const exitNode = this.graph.nodes.find(n => n.id === reachedExit);
+        const directions = [];
+        for (let i = 0; i < path.length - 1; i++) {
+            const u = this.graph.nodes.find(n => n.id === path[i]);
+            const v = this.graph.nodes.find(n => n.id === path[i+1]);
+            if (i === 0) directions.push(`Step 1: Exit '${u.name}' into '${v.name}'.`);
+            else if (i === path.length - 2) directions.push(`Step ${i+1}: Proceed into emergency exit: '${v.name}'.`);
+            else directions.push(`Step ${i+1}: Continue along '${u.name}' towards '${v.name}'.`);
+        }
+        directions.push("Final: Evacuate building immediately and gather at the designated assembly area.");
+
+        return {
+            algorithm: "BFS",
+            success: true,
+            path: path,
+            target_exit: reachedExit,
+            exit_name: exitNode ? exitNode.name : reachedExit,
+            hops: path.length - 1,
+            total_distance: dist,
+            estimated_time_sec: Math.max(5, Math.round(dist / 1.2)),
+            explored_order: explored,
+            nodes_visited_count: explored.length,
+            execution_time_us: Math.max(50, elapsedUs),
+            turn_directions: directions,
+            message: `Optimal evacuation route to ${exitNode.name} (${path.length - 1} hops, ~${dist}m).`
+        };
+    },
+
+    dfs(startId) {
+        const t0 = performance.now();
+        const startNode = this.graph.nodes.find(n => n.id === startId);
+        if (!startNode || !startNode.is_passable) {
+            return {
+                algorithm: "DFS",
+                success: false,
+                path: [],
+                message: `Location '${startNode ? startNode.name : startId}' is blocked!`,
+                explored_order: [],
+                execution_time_us: 150
+            };
+        }
+
+        const visited = new Set();
+        const explored = [];
+        const path = [];
+
+        const visit = (currId) => {
+            visited.add(currId);
+            explored.push(currId);
+            path.push(currId);
+
+            const currNode = this.graph.nodes.find(n => n.id === currId);
+            if (currNode && currNode.is_exit && currNode.is_passable) {
+                return currId;
+            }
+
+            for (const nbr of this.getNeighbors(currId)) {
+                if (!visited.has(nbr)) {
+                    const found = visit(nbr);
+                    if (found) return found;
+                }
+            }
+            path.pop();
+            return null;
+        };
+
+        const reachedExit = visit(startId);
+        const elapsedUs = Math.round((performance.now() - t0) * 1000);
+
+        if (!reachedExit) {
+            return {
+                algorithm: "DFS",
+                success: false,
+                path: [],
+                message: "DFS: No viable evacuation path found.",
+                explored_order: explored,
+                nodes_visited_count: explored.length,
+                execution_time_us: elapsedUs,
+                turn_directions: ["Shelter in place. DFS path exploration compromised."]
+            };
+        }
+
+        let dist = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+            const edge = this.graph.edges.find(e => (e.from === path[i] && e.to === path[i+1]) || (e.to === path[i] && e.from === path[i+1]));
+            dist += edge ? edge.distance : 10;
+        }
+        const exitNode = this.graph.nodes.find(n => n.id === reachedExit);
+
+        return {
+            algorithm: "DFS",
+            success: true,
+            path: path,
+            target_exit: reachedExit,
+            exit_name: exitNode ? exitNode.name : reachedExit,
+            hops: path.length - 1,
+            total_distance: dist,
+            estimated_time_sec: Math.max(5, Math.round(dist / 1.2)),
+            explored_order: explored,
+            nodes_visited_count: explored.length,
+            execution_time_us: Math.max(70, elapsedUs),
+            turn_directions: [`DFS Alternative route: ${path.join(' ➔ ')}`],
+            message: `DFS Route to ${exitNode.name} (${path.length - 1} hops).`
+        };
+    },
+
+    stepFire() {
+        this.stepCount++;
+        const fireNodes = this.graph.nodes.filter(n => n.state === 'FIRE').map(n => n.id);
+        const newFires = [];
+        const newSmokes = [];
+
+        fireNodes.forEach(fId => {
+            this.graph.edges.forEach(edge => {
+                let neighborId = null;
+                if (edge.from === fId) neighborId = edge.to;
+                else if (edge.to === fId) neighborId = edge.from;
+
+                if (neighborId) {
+                    const node = this.graph.nodes.find(n => n.id === neighborId);
+                    if (node && node.state === 'SAFE') {
+                        node.state = 'SMOKE';
+                        node.smoke_level = 0.7;
+                        newSmokes.push(neighborId);
+                    } else if (node && node.state === 'SMOKE') {
+                        node.state = 'FIRE';
+                        node.smoke_level = 1.0;
+                        node.is_passable = false;
+                        newFires.push(neighborId);
+                    }
+                }
+            });
+        });
+
+        return {
+            step: this.stepCount,
+            new_fires: newFires,
+            new_smokes: newSmokes,
+            total_fires: this.graph.nodes.filter(n => n.state === 'FIRE').length,
+            intact_exits: this.graph.nodes.filter(n => n.type === 'EXIT' && n.is_passable).length
+        };
+    }
+};
+
+// -------------------------------------------------------------
 // API Services & State Handlers
 // -------------------------------------------------------------
 function populateRoomSelector() {
@@ -129,17 +490,306 @@ function populateRoomSelector() {
 }
 
 async function fetchBuilding() {
+    if (ClientEngine.isStatic) {
+        state.graph = ClientEngine.initGraph('school');
+        populateRoomSelector();
+        updateStats();
+        draw();
+        runBFS();
+        return;
+    }
+
     try {
         const res = await fetch("/api/building");
+        if (!res.ok) throw new Error("API not available");
         const data = await res.json();
         state.graph = data.graph;
         populateRoomSelector();
         updateStats();
         draw();
-        // DIRECT AUTO-ALLOCATION ON LOAD
         runBFS();
     } catch (err) {
-        console.error("Error loading building data:", err);
+        ClientEngine.isStatic = true;
+        state.graph = ClientEngine.initGraph('school');
+        populateRoomSelector();
+        updateStats();
+        draw();
+        runBFS();
+    }
+}
+
+async function switchPreset(preset) {
+    stopAutoSimulation();
+
+    if (preset === "school") state.startNodeId = "R101";
+    else if (preset === "hospital") state.startNodeId = "ICU";
+    else if (preset === "apartment") state.startNodeId = "FLAT_401";
+
+    if (ClientEngine.isStatic) {
+        state.graph = ClientEngine.initGraph(preset);
+        state.currentRoute = [];
+        state.traversalOrder = [];
+        state.lastResult = null;
+        state.particles = [];
+        populateRoomSelector();
+        if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        traversalLog.textContent = `Loaded ${state.graph.building_name}`;
+        logStepCount.textContent = "Preset Loaded";
+        AudioEngine.click();
+        updateStats();
+        draw();
+        runBFS();
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/building/select", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ preset }),
+        });
+        const data = await res.json();
+        state.graph = data.graph;
+        state.currentRoute = [];
+        state.traversalOrder = [];
+        state.lastResult = null;
+        state.particles = [];
+        populateRoomSelector();
+        if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+        traversalLog.textContent = `Loaded ${state.graph.building_name}`;
+        logStepCount.textContent = "Preset Loaded";
+        AudioEngine.click();
+        updateStats();
+        draw();
+        runBFS();
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        switchPreset(preset);
+    }
+}
+
+async function toggleNodeFire(nodeId) {
+    if (ClientEngine.isStatic) {
+        const node = state.graph.nodes.find(n => n.id === nodeId);
+        if (node) {
+            if (node.state === "FIRE") {
+                node.state = "SAFE";
+                node.smoke_level = 0;
+                node.is_passable = true;
+            } else {
+                node.state = "FIRE";
+                node.smoke_level = 1.0;
+                node.is_passable = false;
+            }
+        }
+        AudioEngine.fireAlert();
+        updateStats();
+        runBFS();
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/node/toggle-fire", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: nodeId }),
+        });
+        const data = await res.json();
+        state.graph = data.graph;
+        AudioEngine.fireAlert();
+        updateStats();
+        runBFS();
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        toggleNodeFire(nodeId);
+    }
+}
+
+async function toggleNodeBlock(nodeId) {
+    if (ClientEngine.isStatic) {
+        const node = state.graph.nodes.find(n => n.id === nodeId);
+        if (node) {
+            if (node.state === "BLOCKED") {
+                node.state = "SAFE";
+                node.is_passable = true;
+            } else {
+                node.state = "BLOCKED";
+                node.is_passable = false;
+            }
+        }
+        AudioEngine.click();
+        updateStats();
+        runBFS();
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/node/toggle-block", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: nodeId }),
+        });
+        const data = await res.json();
+        state.graph = data.graph;
+        AudioEngine.click();
+        updateStats();
+        runBFS();
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        toggleNodeBlock(nodeId);
+    }
+}
+
+async function stepFireSimulation() {
+    if (ClientEngine.isStatic) {
+        const summary = ClientEngine.stepFire();
+        AudioEngine.fireAlert();
+        updateStats();
+        traversalLog.textContent = `Fire Step #${summary.step}: +${summary.new_fires.length} fires, +${summary.new_smokes.length} smokes. Total fires: ${summary.total_fires}. Intact exits: ${summary.intact_exits}.`;
+        logStepCount.textContent = `Step #${summary.step}`;
+        runBFS();
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/simulation/step", { method: "POST" });
+        const data = await res.json();
+        state.graph = data.graph;
+        AudioEngine.fireAlert();
+        updateStats();
+        const s = data.summary;
+        traversalLog.textContent = `Fire Step #${s.step}: +${s.new_fires.length} fires, +${s.new_smokes.length} smokes. Total fires: ${s.total_fires}. Intact exits: ${s.intact_exits}.`;
+        logStepCount.textContent = `Step #${s.step}`;
+        runBFS();
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        stepFireSimulation();
+    }
+}
+
+async function resetSimulation() {
+    stopAutoSimulation();
+
+    if (ClientEngine.isStatic) {
+        ClientEngine.initGraph(ClientEngine.currentPreset);
+        state.graph = ClientEngine.graph;
+        state.currentRoute = [];
+        state.traversalOrder = [];
+        state.lastResult = null;
+        state.particles = [];
+        updateStats();
+        populateRoomSelector();
+        if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
+        logStepCount.textContent = "Safe Baseline";
+        AudioEngine.click();
+        draw();
+        runBFS();
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/simulation/reset", { method: "POST" });
+        const data = await res.json();
+        state.graph = data.graph;
+        state.currentRoute = [];
+        state.traversalOrder = [];
+        state.lastResult = null;
+        state.particles = [];
+        updateStats();
+        populateRoomSelector();
+        if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        traversalLog.textContent = "Hazards cleared. Floor plan restored to safe baseline.";
+        logStepCount.textContent = "Safe Baseline";
+        AudioEngine.click();
+        draw();
+        runBFS();
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        resetSimulation();
+    }
+}
+
+async function runBFS() {
+    if (!state.startNodeId) return;
+
+    if (ClientEngine.isStatic) {
+        const result = ClientEngine.bfs(state.startNodeId);
+        displayRouteResult(result, "Breadth-First Search (BFS)");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/plan/bfs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_node_id: state.startNodeId }),
+        });
+        const result = await res.json();
+        displayRouteResult(result, "Breadth-First Search (BFS)");
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        runBFS();
+    }
+}
+
+async function runDFS() {
+    if (!state.startNodeId) return;
+
+    if (ClientEngine.isStatic) {
+        const result = ClientEngine.dfs(state.startNodeId);
+        displayRouteResult(result, "Depth-First Search (DFS)");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/plan/dfs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_node_id: state.startNodeId }),
+        });
+        const result = await res.json();
+        displayRouteResult(result, "Depth-First Search (DFS)");
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        runDFS();
+    }
+}
+
+async function runBenchmarkComparison() {
+    if (!state.startNodeId) return;
+
+    if (ClientEngine.isStatic) {
+        const bfs = ClientEngine.bfs(state.startNodeId);
+        const dfs = ClientEngine.dfs(state.startNodeId);
+        const node = state.graph.nodes.find(n => n.id === state.startNodeId);
+        AudioEngine.click();
+        renderBenchmarkTable({
+            start_node_id: state.startNodeId,
+            start_room_name: node ? node.name : state.startNodeId,
+            bfs: bfs,
+            dfs: dfs,
+        });
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/plan/compare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_node_id: state.startNodeId }),
+        });
+        const data = await res.json();
+        AudioEngine.click();
+        renderBenchmarkTable(data);
+    } catch (err) {
+        ClientEngine.isStatic = true;
+        runBenchmarkComparison();
     }
 }
 

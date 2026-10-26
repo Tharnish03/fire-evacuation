@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Fire Evacuation Route Planner</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation & System Status Bar -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon">🔥</div>
+            <div>
+                <h1>Building Fire Evacuation Route Planner</h1>
+                <p class="subtitle">Autonomous Dynamic BFS/DFS Graph Navigation & Hazard Mitigation System</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <!-- Audio FX Toggle -->
+            <button class="sound-toggle-btn" id="btn-sound-toggle" title="Toggle System Sound FX">
+                <span id="sound-icon">🔊</span> Sound FX: <span id="sound-status">ON</span>
+            </button>
+            <!-- System Health Pill -->
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span id="system-status">Dispatch System Active</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <!-- Control Sidebar -->
+        <aside class="sidebar">
+            <!-- Building Selector Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🏢</span>
+                    <h3>Floor Plan Preset</h3>
+                </div>
+                <select id="preset-selector" class="dropdown">
+                    <option value="school" selected>🏫 High School Academic Block</option>
+                    <option value="hospital">🏥 City Hospital Emergency Wing</option>
+                    <option value="apartment">🏢 Skyline Heights Residential Apartments</option>
+                </select>
+
+                <!-- Current Location Dropdown for Direct Instant Allocation -->
+                <div style="margin-top: 0.75rem;">
+                    <div style="font-size: 0.74rem; color: var(--accent-blue); margin-bottom: 0.35rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.3rem;">
+                        <span>📍</span> Current Room Location
+                    </div>
+                    <select id="start-room-selector" class="dropdown" style="border-color: rgba(56, 189, 248, 0.4);">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <!-- Building Integrity Gauge -->
+                <div class="integrity-card">
+                    <div class="integrity-label">
+                        <span>Building Safety Index</span>
+                        <b id="integrity-percent">100%</b>
+                    </div>
+                    <div class="integrity-track">
+                        <div class="integrity-bar" id="integrity-bar" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Click Tool Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🎯</span>
+                    <h3>Interactive Floor Tool</h3>
+                </div>
+                <div class="tool-buttons">
+                    <button class="tool-btn active" data-tool="start" id="tool-start">
+                        <span class="tool-icon">📍</span>
+                        <div class="tool-info">
+                            <span class="tool-title">Select Start Room</span>
+                            <span class="tool-desc">Set evacuee initial position</span>
+                        </div>
+                    </button>
+                    <button class="tool-btn" data-tool="fire" id="tool-fire">
+                        <span class="tool-icon">🔥</span>
+                        <div class="tool-info">
+                            <span class="tool-title">Toggle Fire Hazard</span>
+                            <span class="tool-desc">Ignite / extinguish node fire</span>
+                        </div>
+                    </button>
+                    <button class="tool-btn" data-tool="block" id="tool-block">
+                        <span class="tool-icon">⛔</span>
+                        <div class="tool-info">
+                            <span class="tool-title">Toggle Blockage</span>
+                            <span class="tool-desc">Block hallway or locked door</span>
+                        </div>
+                    </button>
+                </div>
+                <div class="hint-box" id="tool-hint">
+                    Click any room or corridor on the floor plan to set your starting evacuation point.
+                </div>
+            </div>
+
+            <!-- Route Planning Algorithms -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🧭</span>
+                    <h3>Pathfinding Algorithms</h3>
+                </div>
+                <div class="action-grid">
+                    <button class="btn btn-primary" id="btn-bfs">
+                        <span>⚡ Run BFS</span>
+                        <small class="algo-badge">O(V+E) Fastest</small>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-dfs">
+                        <span>🔍 Run DFS</span>
+                        <small class="algo-badge">Alternative</small>
+                    </button>
+                </div>
+                <button class="btn btn-benchmark" id="btn-compare">
+                    ⚔️ Compare BFS vs. DFS Benchmark
+                </button>
+            </div>
+
+            <!-- Dynamic Fire Simulator -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🔥</span>
+                    <h3>Dynamic Hazard Simulation</h3>
+                </div>
+                <div class="action-grid">
+                    <button class="btn btn-warning" id="btn-step-fire">
+                        ⏩ Step Spread (+1)
+                    </button>
+                    <button class="btn btn-outline" id="btn-reset">
+                        🔄 Reset Hazards
+                    </button>
+                </div>
+                <!-- Auto Simulation Button -->
+                <button class="btn btn-auto-sim" id="btn-auto-sim">
+                    ▶️ Start Auto-Fire Spread
+                </button>
+            </div>
+
+            <!-- Route Result Card -->
+            <div class="panel result-panel" id="result-panel">
+                <div class="panel-header" style="justify-content: space-between;">
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span class="panel-icon">📊</span>
+                        <h3>Evacuation Route Status</h3>
+                    </div>
+                    <div class="audio-controls">
+                        <button class="btn-voice" id="btn-voice" title="Broadcast Audio Instructions" style="display: none;">
+                            🔊 Speak
+                        </button>
+                        <button class="btn-voice btn-stop-voice" id="btn-stop-voice" title="Stop Audio Alert" style="display: none;">
+                            ⏹️ Stop
+                        </button>
+                    </div>
+                </div>
+                <div id="route-output">
+                    <div class="empty-state">Select a starting room and click <b>Run BFS</b> to compute the fastest safe route.</div>
+                </div>
+            </div>
+
+            <!-- Turn-by-Turn GPS Directions Card -->
+            <div class="panel" id="directions-panel" style="display: none;">
+                <div class="panel-header">
+                    <span class="panel-icon">🚶</span>
+                    <h3>Turn-by-Turn Evacuation Instructions</h3>
+                </div>
+                <ol id="directions-list" class="directions-list"></ol>
+            </div>
+        </aside>
+
+        <!-- Floor Plan Visualizer Area -->
+        <section class="canvas-area">
+            <!-- Toolbar above canvas -->
+            <div class="canvas-toolbar">
+                <div class="stats-bar">
+                    <div class="stat-pill stat-fire"><span class="stat-num" id="stat-fires">0</span> Active Fires</div>
+                    <div class="stat-pill stat-smoke"><span class="stat-num" id="stat-smokes">0</span> Smoke Zones</div>
+                    <div class="stat-pill stat-exit"><span class="stat-num" id="stat-exits">0</span> Safe Exits Available</div>
+                </div>
+                <div class="canvas-actions">
+                    <button class="canvas-tool-btn" id="btn-zoom-in" title="Zoom In">🔍+</button>
+                    <button class="canvas-tool-btn" id="btn-zoom-out" title="Zoom Out">🔍-</button>
+                    <button class="canvas-tool-btn" id="btn-zoom-reset" title="Reset View">🎯 1:1</button>
+                </div>
+            </div>
+
+            <!-- Legend Bar -->
+            <div class="legend-bar">
+                <span class="legend-item"><span class="dot safe"></span> Safe Room</span>
+                <span class="legend-item"><span class="dot exit"></span> Safe Exit (Door)</span>
+                <span class="legend-item"><span class="dot hazard"></span> Hazard Zone</span>
+                <span class="legend-item"><span class="dot fire"></span> Active Fire</span>
+                <span class="legend-item"><span class="dot smoke"></span> Smoke Aura</span>
+                <span class="legend-item"><span class="dot start"></span> Evacuee Start</span>
+                <span class="legend-item"><span class="dot route"></span> Safe Egress Path</span>
+            </div>
+
+            <!-- Canvas Wrapper -->
+            <div class="canvas-wrapper">
+                <canvas id="floor-canvas" width="820" height="520"></canvas>
+            </div>
+
+            <!-- Algorithm Comparison Benchmark Table -->
+            <div class="benchmark-card" id="benchmark-card" style="display: none;">
+                <div class="benchmark-header">
+                    <h4>⚔️ Algorithm Benchmark: BFS vs. DFS Performance Analysis</h4>
+                    <button class="btn-close" id="btn-close-benchmark">&times;</button>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Breadth-First Search (BFS)</th>
+                            <th>Depth-First Search (DFS)</th>
+                            <th>Analysis / Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody id="benchmark-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Traversal Trace / Step Log -->
+            <div class="log-card">
+                <div class="log-header">
+                    <h4>🖥️ Algorithm Traversal Trace & Console</h4>
+                    <span class="log-badge" id="log-step-count">Ready</span>
+                </div>
+                <div id="traversal-log" class="code-log">System ready. Click on any room or run an algorithm to begin...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <span>OOP Graph Architecture • BFS Shortest Path • DFS Alternative Routes • Dynamic Hazard State Engine • Turn-by-Turn Egress</span>
+    </footer>
+
+    <script src="static/js/app.js"></script>
+</body>
+</html>
