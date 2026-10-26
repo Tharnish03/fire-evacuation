@@ -28,6 +28,7 @@ const ctx = canvas.getContext("2d");
 // DOM Elements
 const toolHint = document.getElementById("tool-hint");
 const presetSelector = document.getElementById("preset-selector");
+const startRoomSelector = document.getElementById("start-room-selector");
 const statFires = document.getElementById("stat-fires");
 const statSmokes = document.getElementById("stat-smokes");
 const statExits = document.getElementById("stat-exits");
@@ -110,13 +111,33 @@ const AudioEngine = {
 // -------------------------------------------------------------
 // API Services & State Handlers
 // -------------------------------------------------------------
+function populateRoomSelector() {
+    if (!state.graph || !startRoomSelector) return;
+    startRoomSelector.innerHTML = "";
+
+    const nonExits = state.graph.nodes.filter(n => n.type !== "EXIT");
+    nonExits.forEach(node => {
+        const opt = document.createElement("option");
+        opt.value = node.id;
+        const icon = node.state === "FIRE" ? "🔥 " : node.state === "SMOKE" ? "💨 " : (node.category === "Hazard" || node.risk_level) ? "🔬 " : "📍 ";
+        opt.textContent = `${icon}${node.name} (${node.id})`;
+        if (node.id === state.startNodeId) {
+            opt.selected = true;
+        }
+        startRoomSelector.appendChild(opt);
+    });
+}
+
 async function fetchBuilding() {
     try {
         const res = await fetch("/api/building");
         const data = await res.json();
         state.graph = data.graph;
+        populateRoomSelector();
         updateStats();
         draw();
+        // DIRECT AUTO-ALLOCATION ON LOAD
+        runBFS();
     } catch (err) {
         console.error("Error loading building data:", err);
     }
@@ -141,10 +162,7 @@ async function switchPreset(preset) {
         else if (preset === "hospital") state.startNodeId = "ICU";
         else if (preset === "apartment") state.startNodeId = "FLAT_401";
 
-        routeOutput.innerHTML = `<div class="empty-state">Select a room and click <b>Run BFS</b> to compute the fastest safe route.</div>`;
-        if (directionsPanel) directionsPanel.style.display = "none";
-        if (btnVoice) btnVoice.style.display = "none";
-        if (btnStopVoice) btnStopVoice.style.display = "none";
+        populateRoomSelector();
         if (benchmarkCard) benchmarkCard.style.display = "none";
         if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
@@ -153,6 +171,8 @@ async function switchPreset(preset) {
         AudioEngine.click();
         updateStats();
         draw();
+        // DIRECT AUTO-ALLOCATION ON PRESET CHANGE
+        runBFS();
     } catch (err) {
         console.error("Error selecting preset:", err);
     }
@@ -813,14 +833,12 @@ canvas.addEventListener("click", e => {
 
     if (state.activeTool === "start") {
         state.startNodeId = clickedNode.id;
-        traversalLog.textContent = `Selected evacuation starting location: ${clickedNode.name} (${clickedNode.id})`;
-        logStepCount.textContent = "Start Point Set";
+        if (startRoomSelector) startRoomSelector.value = clickedNode.id;
+        traversalLog.textContent = `Selected evacuation location: ${clickedNode.name} (${clickedNode.id})`;
+        logStepCount.textContent = "Route Allocated";
         AudioEngine.click();
-        if (state.currentRoute.length > 0) {
-            runBFS();
-        } else {
-            draw();
-        }
+        // DIRECT INSTANT ALLOCATION: Automatically compute optimal evacuation route immediately!
+        runBFS();
     } else if (state.activeTool === "fire") {
         toggleNodeFire(clickedNode.id);
     } else if (state.activeTool === "block") {
@@ -861,6 +879,17 @@ document.querySelectorAll(".tool-btn").forEach(btn => {
 presetSelector.addEventListener("change", e => {
     switchPreset(e.target.value);
 });
+
+if (startRoomSelector) {
+    startRoomSelector.addEventListener("change", e => {
+        state.startNodeId = e.target.value;
+        AudioEngine.click();
+        traversalLog.textContent = `Location changed to: ${e.target.options[e.target.selectedIndex].text}`;
+        logStepCount.textContent = "Route Allocated";
+        // DIRECT INSTANT ALLOCATION from dropdown!
+        runBFS();
+    });
+}
 
 // Canvas Zoom Controls
 document.getElementById("btn-zoom-in").addEventListener("click", () => {

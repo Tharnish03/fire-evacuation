@@ -46,6 +46,17 @@
                     <option value="hospital">🏥 City Hospital Emergency Wing</option>
                     <option value="apartment">🏢 Skyline Heights Residential Apartments</option>
                 </select>
+
+                <!-- Current Location Dropdown for Direct Instant Allocation -->
+                <div style="margin-top: 0.75rem;">
+                    <div style="font-size: 0.74rem; color: var(--accent-blue); margin-bottom: 0.35rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.3rem;">
+                        <span>📍</span> Current Room Location
+                    </div>
+                    <select id="start-room-selector" class="dropdown" style="border-color: rgba(56, 189, 248, 0.4);">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
                 <!-- Building Integrity Gauge -->
                 <div class="integrity-card">
                     <div class="integrity-label">
