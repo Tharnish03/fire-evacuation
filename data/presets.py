@@ -1,5 +1,5 @@
 """
-Predefined building floor plans for schools, hospitals, and public complexes.
+Predefined building floor plans for schools, hospitals, and residential apartments.
 """
 from models.node import Room, Corridor, Exit, HazardZone
 from models.building_graph import BuildingGraph
@@ -98,7 +98,58 @@ def create_hospital_wing() -> BuildingGraph:
     return g
 
 
+def create_apartment_building() -> BuildingGraph:
+    """Creates a multi-story residential apartment floor plan with flats, gas duct, and fire escapes."""
+    g = BuildingGraph("Skyline Heights Residential Apartments (Floor 4)")
+
+    # North Flats & Gas Duct
+    g.add_node(Room("FLAT_401", "Flat 401 (3BHK)", x=110, y=90, capacity=5, room_category="Residential"))
+    g.add_node(Room("FLAT_402", "Flat 402 (2BHK)", x=250, y=90, capacity=4, room_category="Residential"))
+    g.add_node(HazardZone("GAS_DUCT", "LPG Pipeline & Gas Duct (Hazard)", x=390, y=90, risk_level="LPG Gas"))
+    g.add_node(Room("FLAT_403", "Flat 403 (3BHK)", x=530, y=90, capacity=6, room_category="Residential"))
+
+    # South Flats & Electrical Shaft
+    g.add_node(Room("FLAT_404", "Flat 404 (2BHK)", x=110, y=330, capacity=4, room_category="Residential"))
+    g.add_node(Room("FLAT_405", "Flat 405 (Studio)", x=250, y=330, capacity=2, room_category="Residential"))
+    g.add_node(HazardZone("ELEC_SHAFT", "Main Electrical Shaft (Hazard)", x=390, y=330, risk_level="High Voltage"))
+    g.add_node(Room("FLAT_406", "Flat 406 (3BHK)", x=530, y=330, capacity=5, room_category="Residential"))
+
+    # Central Passages & Elevator Lobby
+    g.add_node(Corridor("CORR_W", "West Resident Corridor", x=110, y=210))
+    g.add_node(Corridor("LOBBY_W", "Elevator Landing West", x=250, y=210))
+    g.add_node(Corridor("LOBBY_E", "Central Atrium Lobby", x=390, y=210))
+    g.add_node(Corridor("CORR_E", "East Resident Corridor", x=530, y=210))
+
+    # Exits
+    g.add_node(Exit("EXIT_FIRE_STAIR_W", "West Fire Escape Stairwell", x=20, y=210, is_primary=True))
+    g.add_node(Exit("EXIT_MAIN_STAIRS", "Central Main Stairwell Egress", x=390, y=410, is_primary=True))
+    g.add_node(Exit("EXIT_FIRE_STAIR_E", "East Emergency Stairwell", x=630, y=210, is_primary=True))
+
+    # Connect Flats to Corridors
+    g.add_edge("FLAT_401", "CORR_W", distance=8)
+    g.add_edge("FLAT_404", "CORR_W", distance=8)
+    g.add_edge("FLAT_402", "LOBBY_W", distance=8)
+    g.add_edge("FLAT_405", "LOBBY_W", distance=8)
+    g.add_edge("GAS_DUCT", "LOBBY_E", distance=8)
+    g.add_edge("ELEC_SHAFT", "LOBBY_E", distance=8)
+    g.add_edge("FLAT_403", "CORR_E", distance=8)
+    g.add_edge("FLAT_406", "CORR_E", distance=8)
+
+    # Connect Corridors together
+    g.add_edge("CORR_W", "LOBBY_W", distance=14)
+    g.add_edge("LOBBY_W", "LOBBY_E", distance=14)
+    g.add_edge("LOBBY_E", "CORR_E", distance=14)
+
+    # Connect Corridors to Exits
+    g.add_edge("CORR_W", "EXIT_FIRE_STAIR_W", distance=9)
+    g.add_edge("LOBBY_E", "EXIT_MAIN_STAIRS", distance=12)
+    g.add_edge("CORR_E", "EXIT_FIRE_STAIR_E", distance=9)
+
+    return g
+
+
 PRESET_BUILDERS = {
     "school": create_school_building,
     "hospital": create_hospital_wing,
+    "apartment": create_apartment_building,
 }

@@ -30,8 +30,9 @@
             <div class="panel">
                 <h3>🏢 Floor Plan Selection</h3>
                 <select id="preset-selector" class="dropdown">
-                    <option value="school" selected>High School Academic Block</option>
-                    <option value="hospital">City Hospital Emergency Wing</option>
+                    <option value="school" selected>🏫 High School Academic Block</option>
+                    <option value="hospital">🏥 City Hospital Emergency Wing</option>
+                    <option value="apartment">🏢 Skyline Heights Residential Apartments</option>
                 </select>
             </div>
 
@@ -57,12 +58,15 @@
                 <h3>🧭 Route Planning Algorithm</h3>
                 <div class="action-grid">
                     <button class="btn btn-primary" id="btn-bfs">
-                        ⚡ Run BFS (Nearest Exit)
+                        ⚡ Run BFS (Fastest)
                     </button>
                     <button class="btn btn-secondary" id="btn-dfs">
                         🔍 Run DFS (Alternative)
                     </button>
                 </div>
+                <button class="btn btn-benchmark" id="btn-compare" style="margin-top: 0.5rem; width: 100%;">
+                    ⚔️ Compare BFS vs. DFS Benchmark
+                </button>
             </div>
 
             <div class="panel">
@@ -79,10 +83,21 @@
 
             <!-- Route Result Card -->
             <div class="panel result-panel" id="result-panel">
-                <h3>📊 Evacuation Route Status</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3>📊 Evacuation Route Status</h3>
+                    <button class="btn-voice" id="btn-voice" title="Broadcast Audio Instructions" style="display: none;">
+                        🔊 Speak Alert
+                    </button>
+                </div>
                 <div id="route-output">
                     <div class="empty-state">Select a starting room and click <b>Run BFS</b> to compute the fastest safe route.</div>
                 </div>
+            </div>
+
+            <!-- Turn-by-Turn GPS Directions Card -->
+            <div class="panel" id="directions-panel" style="display: none;">
+                <h3>🚶 Turn-by-Turn Evacuation Directions</h3>
+                <ol id="directions-list" class="directions-list"></ol>
             </div>
         </aside>
 
@@ -108,6 +123,27 @@
                 <canvas id="floor-canvas" width="700" height="480"></canvas>
             </div>
 
+            <!-- Algorithm Comparison Benchmark Table (Appears on click) -->
+            <div class="benchmark-card" id="benchmark-card" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <h4>⚔️ Algorithm Benchmark: BFS vs. DFS Performance Analysis</h4>
+                    <button class="btn-close" id="btn-close-benchmark">&times;</button>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Breadth-First Search (BFS)</th>
+                            <th>Depth-First Search (DFS)</th>
+                            <th>Analysis / Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody id="benchmark-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
             <!-- Traversal Trace / Step Log -->
             <div class="log-card">
                 <h4>🖥️ Algorithm Traversal Trace</h4>
@@ -117,7 +153,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>OOP Graph Architecture • BFS Shortest Path • DFS Alternative Routes • Dynamic Hazard State Engine</span>
+        <span>OOP Graph Architecture • BFS Shortest Path • DFS Alternative Routes • Dynamic Hazard State Engine • Turn-by-Turn Egress</span>
     </footer>
 
     <script src="/static/js/app.js"></script>

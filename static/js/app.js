@@ -1,6 +1,7 @@
 /**
  * Building Fire Evacuation Route Planner - Interactive Frontend Engine
- * Handles Canvas rendering, dynamic user interactions, and REST API calls.
+ * Handles Canvas rendering, dynamic user interactions, benchmark comparisons,
+ * turn-by-turn directions, and emergency audio voice broadcast.
  */
 
 // Application State
@@ -13,6 +14,7 @@ const state = {
     animationOffset: 0,
     animFrameId: null,
     hoveredNode: null,
+    lastResult: null,
 };
 
 const canvas = document.getElementById("floor-canvas");
@@ -26,6 +28,11 @@ const statSmokes = document.getElementById("stat-smokes");
 const statExits = document.getElementById("stat-exits");
 const routeOutput = document.getElementById("route-output");
 const traversalLog = document.getElementById("traversal-log");
+const btnVoice = document.getElementById("btn-voice");
+const directionsPanel = document.getElementById("directions-panel");
+const directionsList = document.getElementById("directions-list");
+const benchmarkCard = document.getElementById("benchmark-card");
+const benchmarkBody = document.getElementById("benchmark-body");
 
 const toolHints = {
     start: "Click any room or corridor on the floor plan to set your starting evacuation point.",
@@ -59,9 +66,18 @@ async function switchPreset(preset) {
         state.graph = data.graph;
         state.currentRoute = [];
         state.traversalOrder = [];
-        // Set default start node based on preset
-        state.startNodeId = preset === "school" ? "R101" : "ICU";
+        state.lastResult = null;
+
+        // Set default start node based on selected building
+        if (preset === "school") state.startNodeId = "R101";
+        else if (preset === "hospital") state.startNodeId = "ICU";
+        else if (preset === "apartment") state.startNodeId = "FLAT_401";
+
         routeOutput.innerHTML = `<div class="empty-state">Select a room and click <b>Run BFS</b> to compute route.</div>`;
+        if (directionsPanel) directionsPanel.style.display = "none";
+        if (btnVoice) btnVoice.style.display = "none";
+        if (benchmarkCard) benchmarkCard.style.display = "none";
+
         traversalLog.textContent = `Loaded ${state.graph.building_name}`;
         updateStats();
         draw();
@@ -80,7 +96,6 @@ async function toggleNodeFire(nodeId) {
         const data = await res.json();
         state.graph = data.graph;
         updateStats();
-        // If route is active, auto-recalculate to showcase dynamic re-routing!
         if (state.currentRoute.length > 0) {
             runBFS();
         } else {
@@ -136,8 +151,12 @@ async function resetSimulation() {
         state.graph = data.graph;
         state.currentRoute = [];
         state.traversalOrder = [];
+        state.lastResult = null;
         updateStats();
         routeOutput.innerHTML = `<div class="empty-state">All hazards cleared. Floor plan restored.</div>`;
+        if (directionsPanel) directionsPanel.style.display = "none";
+        if (btnVoice) btnVoice.style.display = "none";
+        if (benchmarkCard) benchmarkCard.style.display = "none";
         traversalLog.textContent = "Hazards cleared. Graph reset to safe baseline.";
         draw();
     } catch (err) {
@@ -181,8 +200,26 @@ async function runDFS() {
     }
 }
 
+async function runBenchmarkComparison() {
+    if (!state.startNodeId) {
+        alert("Please select a starting room first!");
+        return;
+    }
+    try {
+        const res = await fetch("/api/plan/compare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start_node_id: state.startNodeId }),
+        });
+        const data = await res.json();
+        renderBenchmarkTable(data);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 // -------------------------------------------------------------
-// UI Updates & Results Display
+// UI Updates, Directions, and Benchmark Display
 // -------------------------------------------------------------
 function updateStats() {
     if (!state.graph) return;
@@ -198,6 +235,7 @@ function updateStats() {
 function displayRouteResult(result, algoName) {
     state.currentRoute = result.path || [];
     state.traversalOrder = result.explored_order || [];
+    state.lastResult = result;
 
     if (result.success) {
         routeOutput.innerHTML = `
@@ -206,11 +244,19 @@ function displayRouteResult(result, algoName) {
                 <div class="route-stats">
                     <div class="route-stat-box">
                         <div class="val">${result.hops}</div>
-                        <div class="lbl">Transitions / Hops</div>
+                        <div class="lbl">Hops (Doors)</div>
                     </div>
                     <div class="route-stat-box">
                         <div class="val">${result.total_distance ?? "~"} m</div>
-                        <div class="lbl">Approx Distance</div>
+                        <div class="lbl">Total Distance</div>
+                    </div>
+                    <div class="route-stat-box">
+                        <div class="val">~${result.estimated_time_sec ?? "~"}s</div>
+                        <div class="lbl">Est. Egress Time</div>
+                    </div>
+                    <div class="route-stat-box">
+                        <div class="val">${result.execution_time_us ?? 0} &mu;s</div>
+                        <div class="lbl">Compute Speed</div>
                     </div>
                 </div>
                 <p style="font-size:0.8rem; margin-bottom:0.4rem;">
@@ -221,7 +267,16 @@ function displayRouteResult(result, algoName) {
                 </div>
             </div>
         `;
-        traversalLog.textContent = `[${algoName}] Visited order: ${result.explored_order.join(" ➔ ")}`;
+        traversalLog.textContent = `[${algoName}] Visited (${result.nodes_visited_count || result.explored_order.length} nodes): ${result.explored_order.join(" ➔ ")}`;
+
+        // Render turn-by-turn directions
+        if (result.turn_directions && result.turn_directions.length > 0) {
+            directionsPanel.style.display = "block";
+            directionsList.innerHTML = result.turn_directions
+                .map(step => `<li>${step}</li>`)
+                .join("");
+            btnVoice.style.display = "inline-block";
+        }
     } else {
         routeOutput.innerHTML = `
             <div class="route-danger">
@@ -229,10 +284,87 @@ function displayRouteResult(result, algoName) {
                 <p style="font-size:0.82rem; margin-top:0.4rem;">${result.message}</p>
             </div>
         `;
-        traversalLog.textContent = `[${algoName}] Traversal stopped. Visited: ${result.explored_order.join(" ➔ ")}. No exit reached.`;
+        traversalLog.textContent = `[${algoName}] Traversal stopped. Visited: ${result.explored_order.join(" ➔ ")}. No exit reachable!`;
+        if (directionsPanel) directionsPanel.style.display = "none";
+        if (btnVoice) btnVoice.style.display = "none";
     }
 
     draw();
+}
+
+function renderBenchmarkTable(data) {
+    const bfs = data.bfs;
+    const dfs = data.dfs;
+
+    const bfsHops = bfs.success ? bfs.hops : "N/A";
+    const dfsHops = dfs.success ? dfs.hops : "N/A";
+
+    const bfsDist = bfs.success ? `${bfs.total_distance} m` : "N/A";
+    const dfsDist = dfs.success ? `${dfs.total_distance} m` : "N/A";
+
+    const bfsTime = `${bfs.execution_time_us} μs`;
+    const dfsTime = `${dfs.execution_time_us} μs`;
+
+    const bfsVisited = bfs.nodes_visited_count ?? bfs.explored_order.length;
+    const dfsVisited = dfs.nodes_visited_count ?? dfs.explored_order.length;
+
+    benchmarkBody.innerHTML = `
+        <tr>
+            <td><b>Shortest Route (Min Hops)</b></td>
+            <td><b>${bfsHops} hops</b></td>
+            <td>${dfsHops} hops</td>
+            <td><span class="badge-win">BFS Optimal</span></td>
+        </tr>
+        <tr>
+            <td><b>Total Walking Distance</b></td>
+            <td><b>${bfsDist}</b></td>
+            <td>${dfsDist}</td>
+            <td>${bfs.total_distance <= dfs.total_distance ? '<span class="badge-win">BFS Shorter</span>' : '<span class="badge-sub">DFS Alternate</span>'}</td>
+        </tr>
+        <tr>
+            <td><b>Execution Time</b></td>
+            <td>${bfsTime}</td>
+            <td>${dfsTime}</td>
+            <td><span class="badge-win">Both Real-time (&lt;1ms)</span></td>
+        </tr>
+        <tr>
+            <td><b>Nodes Explored in Search</b></td>
+            <td>${bfsVisited} nodes</td>
+            <td>${dfsVisited} nodes</td>
+            <td>${bfsVisited <= dfsVisited ? 'BFS (Breadth-first exploration)' : 'DFS (Deep path exploration)'}</td>
+        </tr>
+        <tr>
+            <td><b>Algorithm Strategy</b></td>
+            <td>Queue (FIFO) Level-by-level search</td>
+            <td>Stack / Recursion Branch-deep search</td>
+            <td><span class="badge-win">BFS Recommended for Egress</span></td>
+        </tr>
+    `;
+
+    benchmarkCard.style.display = "block";
+    traversalLog.textContent = `[Benchmark Comparison Complete for ${data.start_room_name}] BFS: ${bfsHops} hops vs DFS: ${dfsHops} hops.`;
+}
+
+// -------------------------------------------------------------
+// Voice Speech Synthesis (Audio Warning Broadcast)
+// -------------------------------------------------------------
+function speakEvacuationAlert() {
+    if (!state.lastResult || !state.lastResult.turn_directions) return;
+
+    if (!('speechSynthesis' in window)) {
+        alert("Text-to-speech is not supported in this browser.");
+        return;
+    }
+
+    window.speechSynthesis.cancel(); // Stop any previous voice
+
+    const speechText = `Emergency Evacuation Alert. Proceed immediately. ` +
+        state.lastResult.turn_directions.slice(0, 3).join(". ");
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
 }
 
 // -------------------------------------------------------------
@@ -465,6 +597,11 @@ document.getElementById("btn-bfs").addEventListener("click", runBFS);
 document.getElementById("btn-dfs").addEventListener("click", runDFS);
 document.getElementById("btn-step-fire").addEventListener("click", stepFireSimulation);
 document.getElementById("btn-reset").addEventListener("click", resetSimulation);
+document.getElementById("btn-compare").addEventListener("click", runBenchmarkComparison);
+btnVoice.addEventListener("click", speakEvacuationAlert);
+document.getElementById("btn-close-benchmark").addEventListener("click", () => {
+    benchmarkCard.style.display = "none";
+});
 
 // Start app
 fetchBuilding().then(() => {

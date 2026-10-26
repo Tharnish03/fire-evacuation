@@ -1,7 +1,7 @@
 """
 Unit tests for Building Fire Evacuation Route Planner.
 Verifies OOP graph models, BFS shortest path, DFS exploration,
-dynamic fire blockages, and re-routing.
+dynamic fire blockages, apartment layouts, and re-routing.
 """
 import pytest
 from models.node import Room, Exit, Corridor, HazardZone, NodeState
@@ -9,7 +9,7 @@ from models.building_graph import BuildingGraph
 from algorithms.bfs import BFSPlanner
 from algorithms.dfs import DFSPlanner
 from simulation.fire_simulator import FireSimulator
-from data.presets import create_school_building, create_hospital_wing
+from data.presets import create_school_building, create_hospital_wing, create_apartment_building
 
 
 def test_oop_node_instantiation_and_states():
@@ -33,13 +33,14 @@ def test_oop_node_instantiation_and_states():
 def test_bfs_shortest_path_unblocked():
     """Verify BFS finds the shortest path to the nearest safe exit."""
     g = create_school_building()
-    # Path from R101 should go R101 -> C1 -> EXIT_WEST (closest exit)
     result = BFSPlanner.find_shortest_path_to_nearest_exit(g, "R101")
 
     assert result["success"] is True
     assert result["target_exit"] == "EXIT_WEST"
     assert result["path"] == ["R101", "C1", "EXIT_WEST"]
     assert result["hops"] == 2
+    assert "execution_time_us" in result
+    assert len(result["turn_directions"]) > 0
 
 
 def test_bfs_dynamic_rerouting_on_fire():
@@ -49,11 +50,9 @@ def test_bfs_dynamic_rerouting_on_fire():
     # Block West Hallway C1 with fire
     g.toggle_fire("C1")
 
-    # From R102, C1 is blocked. It should route east towards EXIT_EAST or north to EXIT_NORTH!
     result = BFSPlanner.find_shortest_path_to_nearest_exit(g, "R102")
 
     assert result["success"] is True
-    # The route should avoid C1 completely
     assert "C1" not in result["path"]
     assert result["target_exit"] in ["EXIT_NORTH", "EXIT_EAST"]
 
@@ -61,7 +60,6 @@ def test_bfs_dynamic_rerouting_on_fire():
 def test_bfs_all_exits_blocked():
     """Verify behavior when all paths are blocked by hazards."""
     g = create_school_building()
-    # Set all corridors on fire
     g.toggle_fire("C1")
     g.toggle_fire("C2")
     g.toggle_fire("C3")
@@ -87,12 +85,30 @@ def test_fire_simulator_spread():
     g = create_school_building()
     sim = FireSimulator(g, spread_rate=1.0)
 
-    # Ignite LAB
     sim.ignite("LAB")
     assert g.nodes["LAB"].state == NodeState.FIRE
 
-    # Step simulation
     step1 = sim.step()
     assert step1["step"] == 1
-    # Neighbor C4 should now be smoky
     assert g.nodes["C4"].state in [NodeState.SMOKE, NodeState.FIRE]
+
+
+def test_apartment_building_evacuation():
+    """Verify the multi-story residential apartment complex layout and fire routing."""
+    g = create_apartment_building()
+    assert "FLAT_401" in g.nodes
+    assert "GAS_DUCT" in g.nodes
+    assert isinstance(g.nodes["GAS_DUCT"], HazardZone)
+
+    # Evacuate from Flat 401
+    res = BFSPlanner.find_shortest_path_to_nearest_exit(g, "FLAT_401")
+    assert res["success"] is True
+    assert res["target_exit"] == "EXIT_FIRE_STAIR_W"
+    assert res["path"] == ["FLAT_401", "CORR_W", "EXIT_FIRE_STAIR_W"]
+
+    # Block West Corridor with fire
+    g.toggle_fire("CORR_W")
+    res_rerouted = BFSPlanner.find_shortest_path_to_nearest_exit(g, "FLAT_402")
+    assert res_rerouted["success"] is True
+    assert "CORR_W" not in res_rerouted["path"]
+    assert res_rerouted["target_exit"] in ["EXIT_MAIN_STAIRS", "EXIT_FIRE_STAIR_E"]

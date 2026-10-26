@@ -28,6 +28,7 @@ def get_building():
     """Returns the current floor plan graph, node states, and statistics."""
     return jsonify({
         "preset": current_building_key,
+        "building_name": current_graph.building_name,
         "graph": current_graph.to_dict(),
         "step_count": current_simulator.step_count,
         "exits": [e.to_dict() for e in current_graph.get_exits(passable_only=False)],
@@ -36,7 +37,7 @@ def get_building():
 
 @app.route("/api/building/select", methods=["POST"])
 def select_building():
-    """Switches building preset (e.g., 'school' or 'hospital')."""
+    """Switches building preset ('school', 'hospital', or 'apartment')."""
     global current_building_key, current_graph, current_simulator
     data = request.get_json() or {}
     preset = data.get("preset", "school")
@@ -50,6 +51,7 @@ def select_building():
 
     return jsonify({
         "message": f"Loaded {current_graph.building_name}",
+        "preset": current_building_key,
         "graph": current_graph.to_dict(),
     })
 
@@ -135,6 +137,29 @@ def plan_dfs():
         target_exit_id=target_exit_id,
     )
     return jsonify(result)
+
+
+@app.route("/api/plan/compare", methods=["POST"])
+def plan_compare():
+    """
+    Executes BFS and DFS simultaneously on the same start room.
+    Returns side-by-side performance metrics (hops, distance, time_us, nodes_visited).
+    """
+    data = request.get_json() or {}
+    start_node_id = data.get("start_node_id")
+
+    if not start_node_id:
+        return jsonify({"error": "Missing start_node_id"}), 400
+
+    bfs_res = BFSPlanner.find_shortest_path_to_nearest_exit(current_graph, start_node_id)
+    dfs_res = DFSPlanner.find_evacuation_path(current_graph, start_node_id)
+
+    return jsonify({
+        "start_node_id": start_node_id,
+        "start_room_name": current_graph.nodes[start_node_id].name if start_node_id in current_graph.nodes else start_node_id,
+        "bfs": bfs_res,
+        "dfs": dfs_res,
+    })
 
 
 @app.route("/api/plan/all-paths", methods=["POST"])
