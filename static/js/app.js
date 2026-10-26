@@ -29,6 +29,7 @@ const statExits = document.getElementById("stat-exits");
 const routeOutput = document.getElementById("route-output");
 const traversalLog = document.getElementById("traversal-log");
 const btnVoice = document.getElementById("btn-voice");
+const btnStopVoice = document.getElementById("btn-stop-voice");
 const directionsPanel = document.getElementById("directions-panel");
 const directionsList = document.getElementById("directions-list");
 const benchmarkCard = document.getElementById("benchmark-card");
@@ -76,7 +77,9 @@ async function switchPreset(preset) {
         routeOutput.innerHTML = `<div class="empty-state">Select a room and click <b>Run BFS</b> to compute route.</div>`;
         if (directionsPanel) directionsPanel.style.display = "none";
         if (btnVoice) btnVoice.style.display = "none";
+        if (btnStopVoice) btnStopVoice.style.display = "none";
         if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
         traversalLog.textContent = `Loaded ${state.graph.building_name}`;
         updateStats();
@@ -156,7 +159,9 @@ async function resetSimulation() {
         routeOutput.innerHTML = `<div class="empty-state">All hazards cleared. Floor plan restored.</div>`;
         if (directionsPanel) directionsPanel.style.display = "none";
         if (btnVoice) btnVoice.style.display = "none";
+        if (btnStopVoice) btnStopVoice.style.display = "none";
         if (benchmarkCard) benchmarkCard.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         traversalLog.textContent = "Hazards cleared. Graph reset to safe baseline.";
         draw();
     } catch (err) {
@@ -275,7 +280,8 @@ function displayRouteResult(result, algoName) {
             directionsList.innerHTML = result.turn_directions
                 .map(step => `<li>${step}</li>`)
                 .join("");
-            btnVoice.style.display = "inline-block";
+            if (btnVoice) btnVoice.style.display = "inline-block";
+            if (btnStopVoice) btnStopVoice.style.display = "inline-block";
         }
     } else {
         routeOutput.innerHTML = `
@@ -287,6 +293,8 @@ function displayRouteResult(result, algoName) {
         traversalLog.textContent = `[${algoName}] Traversal stopped. Visited: ${result.explored_order.join(" ➔ ")}. No exit reachable!`;
         if (directionsPanel) directionsPanel.style.display = "none";
         if (btnVoice) btnVoice.style.display = "none";
+        if (btnStopVoice) btnStopVoice.style.display = "none";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     }
 
     draw();
@@ -365,6 +373,12 @@ function speakEvacuationAlert() {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     window.speechSynthesis.speak(utterance);
+}
+
+function stopEvacuationAlert() {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
 }
 
 // -------------------------------------------------------------
@@ -599,6 +613,7 @@ document.getElementById("btn-step-fire").addEventListener("click", stepFireSimul
 document.getElementById("btn-reset").addEventListener("click", resetSimulation);
 document.getElementById("btn-compare").addEventListener("click", runBenchmarkComparison);
 btnVoice.addEventListener("click", speakEvacuationAlert);
+if (btnStopVoice) btnStopVoice.addEventListener("click", stopEvacuationAlert);
 document.getElementById("btn-close-benchmark").addEventListener("click", () => {
     benchmarkCard.style.display = "none";
 });

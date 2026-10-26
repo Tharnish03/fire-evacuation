@@ -270,6 +270,15 @@ body {
     background: rgba(56, 189, 248, 0.3);
 }
 
+.btn-stop-voice {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+.btn-stop-voice:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
 .directions-list {
     margin-left: 1.2rem;
     font-size: 0.82rem;
